@@ -1,4 +1,4 @@
-*/Q2 States and test
+1. States and test
 
 > import Data.List
 > import Data.Ord
@@ -32,6 +32,8 @@ coins for the right side of the scale.
 >         validSample = (a + d) <= x && (b + e) <= y && (c + f) <= z
 > valid _ _ = False
 
+2. Choosing and conducting a test
+
 In Triple, when the result is lighter, the fake coin will be 100% in the lighter
 stack if the result is heavier it will 100% be heavier pile. Thus we can move
 all coins of the opposite pile to pile G.
@@ -48,8 +50,25 @@ all coins of the opposite pile to pile G.
 >         heavier (Pair x y) (TPair (a,b) (c,d))          = Triple c a (x - a - c)
 >         heavier (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple 0 (b + e) (x + y + z - b - e)
 
-> sensible :: State -> Test -> Bool
-> sensible state test = False
+1. filterGenue - no need to weigh genue in both pan
+
+> filterGenue :: Test -> Bool
+> filterGenue (TPair (a,b) (c,d))     = not (b > 0 && d > 0)
+> filterGenue (TTrip (a,b,c) (d,e,f)) = not (c > 0 && f > 0)
+
+2. removeDuplicates - we consider (a,b) (c,d) == (c,d) (a,b)
+
+> removeDuplicates :: [Test] -> [Test]
+> removeDuplicates tests = foldr (\x seen -> if x `elem` seen then seen else x : seen) tests []
+
 
 > weighings::State -> [Test]
-> weighings state = []
+> weighings s = filter (\t -> (valid s t) && (filterGenue t)) (tests s)
+>     where
+>         tests (Pair x y)     = [ result | a <- [0..x], b <- [0..x-a],
+>                                           c <- [0..y], d <- [0..y-c],
+>                                           result <- [TPair (a,c) (b,d)]]
+>         tests (Triple x y z) = [ result | a <- [0..x], b <- [0..x-a],
+>                                           c <- [0..y], d <- [0..y-c],
+>                                           e <- [0..z], f <- [0..z-e],
+>                                           result <- [TTrip (a,c,e) (b,d,f)]]
