@@ -94,9 +94,19 @@ For TPair (a,b) (c,d), a sensible test must meet following requirement
 7.
 
 > productive::State -> Test -> Bool
-> productive s t = foldr (\x y -> x && y) True [ s' < s | s'<-(outcomes s t)]
+> productive s t
+>    | length results > 0 = foldr (\x y -> x && y) True [ s' < s | s'<-results]
+>    | otherwise = False
+>    where
+>        results = outcomes s t
+
 
 8.
 
 > tests::State -> [Test]
-> tests s = filter (\t -> (valid s t) && ( productive s t )) (weighings s)
+> tests s = filter (\t -> (valid s t) && (productive s t)) (weighings s)
+
+9.
+
+> data Tree = Stop State | Node Test [Tree]
+>    deriving Show
