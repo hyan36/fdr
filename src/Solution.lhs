@@ -36,10 +36,6 @@ coins for the right side of the scale.
 
 2. outcomes
 
-In Triple, when the result is lighter, the fake coin will be 100% in the lighter
-stack if the result is heavier it will 100% be heavier pile. Thus we can move
-all coins of the opposite pile to pile G.
-
 > outcomes::State -> Test -> [State]
 > outcomes state test
 >     | valid state test = [(lighter state test),(balanced state test),(heavier state test)]
@@ -48,9 +44,9 @@ all coins of the opposite pile to pile G.
 >         balanced (Pair x y) (TPair (a,b) (c,d))         = Pair (x - a - c) (y + a + c)
 >         balanced (Triple x y z) (TTrip (a,b,c) (d,e,f)) = Triple (x - a - d) (y - b - e) (z + a + d + b + e)
 >         lighter (Pair x y) (TPair (a,b) (c,d))          = Triple a c (x - a - c)
->         lighter (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple (a + d) 0 (x + y + z - a - d)
+>         lighter (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple a e (x + y + z - a - e)
 >         heavier (Pair x y) (TPair (a,b) (c,d))          = Triple c a (x - a - c)
->         heavier (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple 0 (b + e) (x + y + z - b - e)
+>         heavier (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple d b (x + y + z - b - d)
 
 3. weighings - Pair
 
@@ -67,13 +63,40 @@ For TPair (a,b) (c,d), a sensible test must meet following requirement
 > weighings (Pair u g) = [TPair (a,b) (a + b, 0) | a <- [0..u], b <- [0..g],
 >                                                  a + b > 0,
 >                                                  2 * a + b <= u,
->                                                  (a,b) <= (a+b,0)]
+>                                                  (a,b) <= (a + b, 0)]
+
+5. weigh - Triple
+
+> weighings (Triple l h g) = [ TTrip (a,b,c) (d,e,f) | k <- [1..((l + h + g) `div` 2)],
+>                                                      (a,b,c) <- choices k (l,h,g),
+>                                                      (d,e,f) <- choices k (l,h,g),
+>                                                      a + b + c == d + e + f,
+>                                                      a + b + c > 0,
+>                                                      c * f == 0,
+>                                                      a + d <= l,
+>                                                      b + e <= h,
+>                                                      c + f <= g,
+>                                                      (a,b,c) <= (d,e,f)]
 
 4. choice
 
 > choices::Int -> (Int,Int,Int)->[(Int,Int,Int)]
 > choices k (l,h,g) = [(i,j,k-i-j) | i <- [0..l], j <-[0..h], k-i-j >= 0, k-i-j <= g]
 
-5. weighings - Triple
-weighings (Triple l h g) = [  | k <- [1.. ((l + h + g) `div` 2)], ]
+6. define ord state
 
+> instance Ord State where
+>     compare (Triple _ _ _) (Pair _ _)        = compare 0 1
+>     compare (Pair _ _) (Triple _ _ _)        = compare 1 0
+>     compare (Pair u g) (Pair u' g')          = compare g' g
+>     compare (Triple l h g) (Triple l' h' g') = compare g' g
+
+7.
+
+> productive::State -> Test -> Bool
+> productive s t = foldr (\x y -> x && y) True [ s' < s | s'<-(outcomes s t)]
+
+8.
+
+> tests::State -> [Test]
+> tests s = filter (\t -> (valid s t) && ( productive s t )) (weighings s)
