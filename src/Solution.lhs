@@ -21,6 +21,8 @@ assume we have a pile of 5 coins. We've taken 3 coins to the left hand side of
 the scales. There are 2 coins remaining in the pile. We can't take more than 2
 coins for the right side of the scale.
 
+1.valid
+
 > valid:: State -> Test -> Bool
 > valid (Pair x y) (TPair (a,b) (c,d)) = validTest && validSample
 >     where
@@ -32,7 +34,7 @@ coins for the right side of the scale.
 >         validSample = (a + d) <= x && (b + e) <= y && (c + f) <= z
 > valid _ _ = False
 
-2. Choosing and conducting a test
+2. outcomes
 
 In Triple, when the result is lighter, the fake coin will be 100% in the lighter
 stack if the result is heavier it will 100% be heavier pile. Thus we can move
@@ -50,25 +52,28 @@ all coins of the opposite pile to pile G.
 >         heavier (Pair x y) (TPair (a,b) (c,d))          = Triple c a (x - a - c)
 >         heavier (Triple x y z) (TTrip (a,b,c) (d,e,f))  = Triple 0 (b + e) (x + y + z - b - e)
 
-1. filterGenue - no need to weigh genue in both pan
+3. weighings - Pair
 
-> filterGenue :: Test -> Bool
-> filterGenue (TPair (a,b) (c,d))     = not (b > 0 && d > 0)
-> filterGenue (TTrip (a,b,c) (d,e,f)) = not (c > 0 && f > 0)
+For TPair (a,b) (c,d), a sensible test must meet following requirement
 
-2. removeDuplicates - we consider (a,b) (c,d) == (c,d) (a,b)
-
-> removeDuplicates :: [Test] -> [Test]
-> removeDuplicates tests = foldr (\x seen -> if x `elem` seen then seen else x : seen) tests []
-
+* a + b == c + d : in our implementation, a + b == (a+b) + 0, thus there is no need to validate that
+* a + b > 0 : we will use as it is
+* b * d == 0 : in our  implementation,  d = 0 thus b * d will always equals 0, thus there is no need to validate that
+* a + c <= u : since c = a + b thus we will translate this condition to 2 * a + b <= u
+* b + d <= g : since d = 0 thus, b + d = b. In our implementation b <- [0..g], it will always be smaller than g, thus there is no need to validate that
+* (a,b) <= (c,d) : since c = a + b, d = 0. We translate the equation to (a,b) <= (a+b,0)
 
 > weighings::State -> [Test]
-> weighings s = filter (\t -> (valid s t) && (filterGenue t)) (tests s)
->     where
->         tests (Pair x y)     = [ result | a <- [0..x], b <- [0..x-a],
->                                           c <- [0..y], d <- [0..y-c],
->                                           result <- [TPair (a,c) (b,d)]]
->         tests (Triple x y z) = [ result | a <- [0..x], b <- [0..x-a],
->                                           c <- [0..y], d <- [0..y-c],
->                                           e <- [0..z], f <- [0..z-e],
->                                           result <- [TTrip (a,c,e) (b,d,f)]]
+> weighings (Pair u g) = [TPair (a,b) (a + b, 0) | a <- [0..u], b <- [0..g],
+>                                                  a + b > 0,
+>                                                  2 * a + b <= u,
+>                                                  (a,b) <= (a+b,0)]
+
+4. choice
+
+> choices::Int -> (Int,Int,Int)->[(Int,Int,Int)]
+> choices k (l,h,g) = [(i,j,k-i-j) | i <- [0..l], j <-[0..h], k-i-j >= 0, k-i-j <= g]
+
+5. weighings - Triple
+weighings (Triple l h g) = [  | k <- [1.. ((l + h + g) `div` 2)], ]
+
