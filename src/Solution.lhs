@@ -2,6 +2,7 @@
 
 > import Data.List
 > import Data.Ord
+> import Test.QuickCheck
 
 > data State = Pair Int Int | Triple Int Int Int
 >     deriving (Eq, Show)
@@ -109,4 +110,69 @@ For TPair (a,b) (c,d), a sensible test must meet following requirement
 9.
 
 > data Tree = Stop State | Node Test [Tree]
->    deriving Show
+>    deriving (Eq,Show)
+
+Define a final method to determine
+
+> final::State -> Bool
+> final (Pair u g) = u == 0 && g > 0
+> final (Triple l h g)
+>    | l == 1           = h == 0 && g > 0
+>    | h == 1           = l == 0 && g > 0
+>    | otherwise        = False
+
+10. height
+
+> height::Tree -> Int
+> height (Stop x) = 0
+> height (Node t xs)
+>   | length xs > 0 = 1 + maximum [ height x | x <- xs]
+>   | otherwise     = 1
+
+
+11. minHeight
+
+> instance Ord Tree where
+>     compare x y = compare (height x) (height y)
+> minHeight::[Tree] -> Tree
+> minHeight xs = minimum xs
+
+
+12. mktree
+
+> mktree::State -> Tree
+> mktree s
+>     | final s || l == 0  = Stop s
+>     | otherwise          = minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t)]) ts)
+>     where
+>        l  = (length ts)
+>        ts = tests s
+
+13
+
+> data TreeH = StopH State | NodeH Int Test [TreeH]
+>    deriving (Eq,Show)
+
+> heightH::TreeH -> Int
+> heightH (StopH s) = 0
+> heightH (NodeH h t ts) = h
+
+> treeH2tree::TreeH -> Tree
+> treeH2tree (StopH s) = Stop s
+> treeH2tree (NodeH n t ts) = Node t [ treeH2tree x | x <- ts]
+
+14
+
+> nodeH :: Test -> [TreeH] -> TreeH
+> nodeH t ts = NodeH (maximum (map heightH ts) + 1) t ts
+
+15
+
+> tree2treeH::Tree -> TreeH
+> tree2treeH (Stop s) = StopH s
+> tree2treeH (Node t ts) = NodeH (height (Node t ts)) t [ tree2treeH x | x <- ts]
+
+
+> prop_treeHreverse x = heightH (tree2treeH  x) == height x
+
+16
