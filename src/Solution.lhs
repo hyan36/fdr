@@ -143,10 +143,10 @@ Define a final method to determine
 > mktree::State -> Tree
 > mktree s
 >     | final s || l == 0  = Stop s
->     | otherwise          = minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t)]) ts)
+>     | otherwise          =  minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t) ]) ts)
 >     where
->        l  = (length ts)
->        ts = tests s
+>         l  = (length ts)
+>         ts = tests s
 
 13
 
@@ -172,7 +172,54 @@ Define a final method to determine
 > tree2treeH (Stop s) = StopH s
 > tree2treeH (Node t ts) = NodeH (height (Node t ts)) t [ tree2treeH x | x <- ts]
 
-
-> prop_treeHreverse x = heightH (tree2treeH  x) == height x
-
 16
+
+> instance Ord TreeH where
+>     compare x y = compare (heightH x) (heightH y)
+> minHeightH:: [TreeH] -> TreeH
+> minHeightH xs = minimum xs
+
+> mktreeH :: State -> TreeH
+> mktreeH s = minHeightH (map ( \t -> tree2treeH (Node t [ mktree s' | s' <- (outcomes s t)]) ) ts)
+>       where
+>          ts = tests s
+
+> optimal::State -> Test -> Bool
+> optimal (Pair u g) (TPair (a,b) (ab, 0))
+>     = (2 * a + b <= p) && (u - 2 * a - b <= q)
+>         where
+>             p = 3 ^ (t - 1)
+>             q = (p - 1) `div` 2
+>             t = ceiling (logBase 3 (fromIntegral (2 * u + k)))
+>             k = if g == 0 then 2 else 1
+> optimal (Triple l h g) (TTrip (a, b, c) (d, e,f ))
+>    = (a + e) `max` (b + d) `max` (l - a - d + h - b - e) <= p
+>        where
+>            p = 3 ^ (t - 1)
+>            t = ceiling (logBase 3 (fromIntegral( l + h )))
+
+17
+
+> bestTests::State -> [Test]
+> bestTests s = filter (\t -> optimal s t) (tests s)
+
+18
+
+> mktreeG::State -> TreeH
+> mktreeG s
+>    | final s || l == 0  = StopH s
+>    | otherwise          = head (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
+>    where l        = (length  (bestTests s))
+>          trees t  = [ mktreeG s' | s' <- (outcomes s t)]
+>          height t = heightH (minHeightH (trees t)) + 1
+
+> mktreeG'::State -> TreeH
+> mktreeG' s
+>    | final s || l == 0  = StopH s
+>    | otherwise          = minHeightH (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
+>    where l        = (length  (bestTests s))
+>          trees t  = [ mktreeG' s' | s' <- (outcomes s t)]
+>          height t = heightH (minHeightH (trees t)) + 1
+
+> mktreesG::State -> [TreeH]
+> mktreesG s = map ( \t -> mktreeG' s) (bestTests s)
