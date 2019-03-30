@@ -1,8 +1,68 @@
-1. States and test
+
+Introduction
+
+The puzzle require the application to find the coin with different weight. In
+this simulation, we are going to use a list to represent a pile of coins, the
+element inside of the List is the weight of the coins. For example, given a list
+of coin [1,1,2,1,1], the coin weighs 2 is the fake coin.
+
+Firstly, we will need to import required libraries
 
 > import Data.List
 > import Data.Ord
 > import Test.QuickCheck
+
+The following function will weigh 3 coins and find the fake coin. Assume there is
+3 coins in the pile, a, b and c.. We will have following coinditions:
+
+1. a == b && b == c : all coins are equal in weight
+2. a == b && a /= c : c is the fake coin
+3. a /= b && a == c : b is the fake coin
+4. a /= b && a /= c && b == c : a is the fake coin
+
+> weigh :: [Int] -> Int
+> weigh (a:b:xs)
+>    | a == b && a == c = -1
+>    | a == b && a /= c = c
+>    | a /= b && a == c = b
+>    | otherwise = a
+>    where
+>        c = head xs
+> weigh xs = -1
+
+My solution is weigh 3 coins at time until we find the fake coin. However, this
+creates a problem, when the size of pile can not be `mod` by 3, we will have 1
+or 2 coins left in the pile.
+
+To overcome this issue, we will take n coins from the genue pile. (Given we have
+only one fake coin in the pile. If the program hits the last few coins, all
+previous tested coins are genue. )
+
+* n = 3 - ((length xs) `mod` 3)
+
+We then define a function to prefill the original list. So that we can always
+group the list with the size of 3/ E.g. [[1,2,1],[1,1,1]...[1,1,1]].
+
+> prefill::Int -> [Int] -> [Int]
+> prefill _ [] = []
+> prefill n xs = xs ++ (take (if size == n then 0 else size) xs)
+>     where
+>         size = n - ((length xs) `mod` n)
+
+Now that we have a list of test cases. We just need to weigh every 3 coins until
+find out the fake coin.
+
+> findFake::[Int] -> Int
+> findFake [] = -1
+> findFake (x:y:z:xs) = if test /= -1 then test else findFake xs
+>     where
+>         pile = prefill 3 (x:y:z:xs)
+>         test = weigh [x,y,z]
+
+This is the most obvious way of finding the fake coins. The complexity of this
+solution is O(n/3). When there is 12 coins
+
+States and test
 
 > data State = Pair Int Int | Triple Int Int Int
 >     deriving (Eq, Show)
@@ -213,6 +273,8 @@ Define a final method to determine
 >          trees t  = [ mktreeG s' | s' <- (outcomes s t)]
 >          height t = heightH (minHeightH (trees t)) + 1
 
+19
+
 > mktreeG'::State -> TreeH
 > mktreeG' s
 >    | final s || l == 0  = StopH s
@@ -223,3 +285,74 @@ Define a final method to determine
 
 > mktreesG::State -> [TreeH]
 > mktreesG s = map ( \t -> mktreeG' s) (bestTests s)
+
+Appendix - Unit Test
+
+In order to justify the assumption in question 15, I implemented quick check
+tests to validate our theory. Although this can not proof the equation in theory,
+this still increases user's confidence.
+
+"as an inverse to treeH2tree. Convince yourself that => heightH . tree2treeH = height "
+
+Firstly, we need to create new instance for our customized data type State.
+
+> instance Arbitrary State where
+>     arbitrary = sized state'
+>         where
+>            state' 0 = do
+>               u <- arbitrary
+>               g <- arbitrary
+>               return (Pair u g)
+>            state' n = do
+>               l <- arbitrary
+>               h <- arbitrary
+>               g <- arbitrary
+>               return (Triple l h g)
+
+Secondly, we need to create new instance for our customized data type Test.
+
+> instance Arbitrary Test where
+>     arbitrary = sized test'
+>         where
+>           test' 0 = do
+>               u <- arbitrary
+>               g <- arbitrary
+>               u' <- arbitrary
+>               g' <- arbitrary
+>               return (TPair (u,g) (u',g'))
+>           test' n = do
+>               l <- arbitrary
+>               h <- arbitrary
+>               g <- arbitrary
+>               l' <- arbitrary
+>               h' <- arbitrary
+>               g' <- arbitrary
+>               return (TTrip (l,h,g) (l',h',g'))
+
+Thirdly, we have to create new instance for Tree. Tree is recursive data type.
+It is important that we control the size of recursion. That is why I choose to
+use (n `div` 2) so it can avoid long test case generation.
+
+> instance Arbitrary Tree where
+>    arbitrary = sized tree'
+>        where
+>           tree' 0 = do
+>                a <- arbitrary
+>                return  (Stop a)
+>           tree' n
+>               | n > 0 = do
+>                   t <- arbitrary
+>                   ts <- vectorOf 3 (tree' (n `div` 2))
+>                   return (Node t ts)
+
+Finally, we define our test cases, given a random tree, we will always have the
+following equation
+
+heightH (tree2treeH tree) == height tree
+
+> prop_testHeight t = heightH (tree2treeH t) == height t
+
+After execution, we had following result:
+
+*Main> quickCheck prop_testHeight
++++ OK, passed 100 tests.

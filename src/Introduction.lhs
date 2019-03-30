@@ -1,4 +1,4 @@
-Q1 Introduction
+1 Introduction
 
 > import Data.List
 > import Data.Ord
