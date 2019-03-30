@@ -1,10 +1,10 @@
 
 Introduction
 
-The puzzle require the application to find the coin with different weight. In
-this simulation, we are going to use a list to represent a pile of coins, the
-element inside of the List is the weight of the coins. For example, given a list
-of coin [1,1,2,1,1], the coin weighs 2 is the fake coin.
+The puzzle requires us to find the coin with different weight. In this example,
+we are going to use a list to represent a pile of coins, the element of the list
+is the weight of the coins. For example, given a list of coin [1,1,2,1,1], the
+coin weighs 2 is the fake coin.
 
 Firstly, we will need to import required libraries
 
@@ -60,7 +60,8 @@ find out the fake coin.
 >         test = weigh [x,y,z]
 
 This is the most obvious way of finding the fake coins. The complexity of this
-solution is O(n/3). When there is 12 coins
+solution is O(n/3). When there is 12 coins we will use 4 weighs to find the fake
+coin.
 
 States and test
 
@@ -98,8 +99,8 @@ coins for the right side of the scale.
 2. outcomes
 
 > outcomes::State -> Test -> [State]
-> outcomes state test
->     | valid state test = [(lighter state test),(balanced state test),(heavier state test)]
+> outcomes s t
+>     | valid s t = [(lighter s t),(balanced s t),(heavier s t)]
 >     | otherwise = []
 >     where
 >         balanced (Pair x y) (TPair (a,b) (c,d))         = Pair (x - a - c) (y + a + c)
