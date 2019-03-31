@@ -241,9 +241,15 @@ Define a final method to determine
 > minHeightH xs = minimum xs
 
 > mktreeH :: State -> TreeH
-> mktreeH s = minHeightH (map ( \t -> tree2treeH (Node t [ mktree s' | s' <- (outcomes s t)]) ) ts)
->       where
->          ts = tests s
+> mktreeH s
+>    | final s || l == 0  = StopH s
+>    | otherwise          = minHeightH (map ( \t -> NodeH (height t) t (trees t) ) ts)
+>    where
+>          l        = (length  ts)
+>          trees t  = [ mktreeH s' | s' <- (outcomes s t)]
+>          height t = heightH (minHeightH (trees t)) + 1
+>          ts       = tests s
+
 
 > optimal::State -> Test -> Bool
 > optimal (Pair u g) (TPair (a,b) (ab, 0))
