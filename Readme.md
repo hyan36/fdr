@@ -1,11 +1,8 @@
-Introduction
+# Introduction
 
-The puzzle requires us to find the coin with different weight. In this
-example, we are going to use a list to represent a pile of coins, the
-element of the list is the weight of the coins. For example, given a
-list of coin \[1,1,2,1,1\], the coin weighs 2 is the fake coin.
+The puzzle requires us to find the coin with different weight. In this example, we are going to use a list to represent a pile of coins, the element of the list is the weight of the coins. For example, given a list of coin \[1,1,2,1,1\], the coin weighs 2 is the fake coin.
 
-Firstly, we will need to import required libraries
+Firstly, we will need to import required libraries.
 
 ``` {.haskell .literate}
 import Data.List
@@ -13,9 +10,7 @@ import Data.Ord
 import Test.QuickCheck
 ```
 
-The following function will weigh 3 coins and find the fake coin. Assume
-there is 3 coins in the pile, a, b and c.. We will have following
-coinditions:
+The following function will weigh 3 coins and spot the fake coin. Assume there is 3 coins in the pile, a, b and c.. We will have following coinditions:
 
 1.  a == b && b == c : all coins are equal in weight
 2.  a == b && a /= c : c is the fake coin
@@ -34,13 +29,10 @@ weigh (a:b:xs)
 weigh xs = -1
 ```
 
-My solution is weigh 3 coins at time until we find the fake coin.
-However, this creates a problem, when the size of pile can not be `mod`
-by 3, we will have 1 or 2 coins left in the pile.
+Our strategy is to weigh 3 coins each time until find the fake coins. However, this strategy creates a problem, when the size of pile can not be `mod` by 3, we will have 1 or 2 coins left in the pile whic can not be determined wether it is fake or not. 
 
-To overcome this issue, we will take n coins from the genue pile. (Given
-we have only one fake coin in the pile. If the program hits the last few
-coins, all previous tested coins are genue. )
+Our solution is to take n coins from the genue pile. (Given we have only one fake coin in the pile. If the program hits the last few
+coins, all previous tested coins are genue.)
 
 -   n = 3 - ((length xs) `mod` 3)
 
