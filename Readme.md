@@ -29,16 +29,14 @@ weigh (a:b:xs)
 weigh xs = -1
 ```
 
-Our strategy is to weigh 3 coins each time until find the fake coins. However, this strategy creates a problem, when the size of pile can not be `mod` by 3, we will have 1 or 2 coins left in the pile whic can not be determined wether it is fake or not. 
+My strategy is to weigh 3 coins each time until find the fake coins. However, this strategy creates a problem, when the size of pile can not be `mod` by 3, we will have 1 or 2 coins left in the pile whic can not be determined wether it is fake or not. 
 
-Our solution is to take n coins from the genue pile. (Given we have only one fake coin in the pile. If the program hits the last few
+My solution is to take n coins from the genue pile. (Given we have only one fake coin in the pile. If the program hits the last few
 coins, all previous tested coins are genue.)
 
 -   n = 3 - ((length xs) `mod` 3)
 
-We then define a function to prefill the original list. So that we can
-always group the list with the size of 3/ E.g.
-\[\[1,2,1\],\[1,1,1\]...\[1,1,1\]\].
+We then define a function to prefill the original list. So we can split the pile into smaller sizes 3. E.g. \[\[1,2,1\],\[1,1,1\]...\[1,1,1\]\].
 
 ``` {.haskell .literate}
 prefill::Int -> [Int] -> [Int]
@@ -48,8 +46,7 @@ prefill n xs = xs ++ (take (if size == n then 0 else size) xs)
         size = n - ((length xs) `mod` n)
 ```
 
-Now that we have a list of test cases. We just need to weigh every 3
-coins until find out the fake coin.
+Now that we have a list of test cases. We just need to weigh every 3 coins until find out the fake coin.
 
 ``` {.haskell .literate}
 findFake::[Int] -> Int
@@ -60,11 +57,11 @@ findFake (x:y:z:xs) = if test /= -1 then test else findFake xs
         test = weigh [x,y,z]
 ```
 
-This is the most obvious way of finding the fake coins. The complexity
-of this solution is O(n/3). When there is 12 coins we will use 4 weighs
-to find the fake coin.
+This is the most obvious way of finding the fake coins. The complexity of this solution is O(n/3). When there is 12 coins we will use 4 weighs to find the fake coin.
 
-States and test
+# States and test
+
+The assignment requires 
 
 ``` {.haskell .literate}
 data State = Pair Int Int | Triple Int Int Int
