@@ -204,7 +204,7 @@ Define a final method to determine
 > mktree::State -> Tree
 > mktree s
 >     | final s || l == 0  = Stop s
->     | otherwise          =  minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t) ]) ts)
+>     | otherwise          = minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t) ]) ts)
 >     where
 >         l  = (length ts)
 >         ts = tests s
@@ -243,12 +243,13 @@ Define a final method to determine
 > mktreeH :: State -> TreeH
 > mktreeH s
 >    | final s || l == 0  = StopH s
->    | otherwise          = minHeightH (map ( \t -> NodeH (height t) t (trees t) ) ts)
+>    | otherwise          = minHeightH (map ( \t -> mknode s t ) (tests s))
 >    where
->          l        = (length  ts)
->          trees t  = [ mktreeH s' | s' <- (outcomes s t)]
->          height t = heightH (minHeightH (trees t)) + 1
->          ts       = tests s
+>        l              = length (tests s)
+>        mknode s t     = NodeH height t trees
+>            where 
+>                trees  = [ tree2treeH (mktree s') | s' <- (outcomes s t)]
+>                height = heightH (maximum trees) + 1
 
 
 > optimal::State -> Test -> Bool
@@ -276,9 +277,9 @@ Define a final method to determine
 > mktreeG s
 >    | final s || l == 0  = StopH s
 >    | otherwise          = head (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
->    where l        = (length  (bestTests s))
+>    where l        = length  (bestTests s)
 >          trees t  = [ mktreeG s' | s' <- (outcomes s t)]
->          height t = heightH (minHeightH (trees t)) + 1
+>          height t = heightH (maximum (trees t)) + 1
 
 19
 
@@ -286,7 +287,7 @@ Define a final method to determine
 > mktreeG' s
 >    | final s || l == 0  = StopH s
 >    | otherwise          = minHeightH (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
->    where l        = (length  (bestTests s))
+>    where l        = length  (bestTests s)
 >          trees t  = [ mktreeG' s' | s' <- (outcomes s t)]
 >          height t = heightH (minHeightH (trees t)) + 1
 

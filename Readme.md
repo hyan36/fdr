@@ -349,7 +349,9 @@ tree2treeH (Stop s) = StopH s
 tree2treeH (Node t ts) = NodeH (height (Node t ts)) t [ tree2treeH x | x <- ts]
 ```
 
-16
+16 
+
+Wrong answer please revisit later
 
 ``` {.haskell .literate}
 instance Ord TreeH where
