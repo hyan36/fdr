@@ -290,9 +290,9 @@ height (Node t xs)
 
 ### Q11 - Define `minHeight`
 
-Instead of defining our own `minimum` function, we will just try to utilize the existing minimum function.
+Instead of defining our own `minimum` function, we will just try to utilize the existing minimum function provided by `Data.List`.
 
-As a result, we will need to define a new instance for `Ord Tree`. The order of two trees are determined by their height.
+As a result, we will need to define a new instance for `Ord Tree`. The order of two trees are determined by their height. The benefit of this approach is that we can utilize the out of functions instead of defining our own. However, it changes the default of definition of `t1 < t2`. Given that in this assignment, we won't have other definition of the expression, I choose decide to follow this approach. 
 
 ``` {.haskell .literate}
 instance Ord Tree where
@@ -315,41 +315,23 @@ mktree s
         ts = tests s
 ```
 
-13
+## Caching heights
+In the previous section, we have got a function which produces the tree with minium height (best strategy of weighing). However, the performance of which is relatively low. One of the potential reasons that been hinted is that we are calling `height` recursively. In this section, we are going to try to optimized performance by caching the height of trees. 
 
+Firstly, we need to define a `TreeH` data type. 
 ``` {.haskell .literate}
 data TreeH = StopH State | NodeH Int Test [TreeH]
    deriving (Eq,Show)
 ```
 
+Secondly, we will define `heightH` to return the height of `TreeH`.
 ``` {.haskell .literate}
 heightH::TreeH -> Int
 heightH (StopH s) = 0
 heightH (NodeH h t ts) = h
 ```
 
-``` {.haskell .literate}
-treeH2tree::TreeH -> Tree
-treeH2tree (StopH s) = Stop s
-treeH2tree (NodeH n t ts) = Node t [ treeH2tree x | x <- ts]
-```
-
-14
-
-``` {.haskell .literate}
-nodeH :: Test -> [TreeH] -> TreeH
-nodeH t ts = NodeH (1 + maximum (map heightH ts)) t ts
-```
-
-15
-
-``` {.haskell .literate}
-tree2treeH::Tree -> TreeH
-tree2treeH (Stop s) = StopH s
-tree2treeH (Node t ts) = nodeH t [ tree2treeH x | x <- ts]
-```
-
-16 
+Last but not least, we will define `minHeightH` function to get the tree with lowest height. 
 
 ``` {.haskell .literate}
 instance Ord TreeH where
@@ -358,10 +340,62 @@ minHeightH:: [TreeH] -> TreeH
 minHeightH = minimum
 ```
 
+### Q13 - Define `treeH2tree`
+Following function will transform a given `Tree` to `TreeH`.
+
+``` {.haskell .literate}
+treeH2tree::TreeH -> Tree
+treeH2tree (StopH s) = Stop s
+treeH2tree (NodeH n t ts) = Node t [ treeH2tree x | x <- ts]
+```
+
+### Q14 - Define smart constructor `nodeH`
+Following function will make a `NodeH` with given `Test` and 3 nodes.
+
+``` {.haskell .literate}
+nodeH :: Test -> [TreeH] -> TreeH
+nodeH t ts = NodeH (1 + maximum (map heightH ts)) t ts
+```
+
+### Q15 - Define `tree2treeH`
+
+Following function will covert given `Tree` to `TreeH`.
+
+``` {.haskell .literate}
+tree2treeH::Tree -> TreeH
+tree2treeH (Stop s) = StopH s
+tree2treeH (Node t ts) = nodeH t [ tree2treeH x | x <- ts]
+```
+Justify `heightH . tree2treeH = height`:
+
+* when input `t` is final, we have `heightH t` and `height t` both equals to 0
+* when input `t` is not final, `tree2treeH` t will calculate the height of each layer recursively `(1 + maximum (map heightH ts))` until hit final states. This is equivant to `height` by `(1 + (maximum $ map height xs))`.
+
+As a result, I believe `heightH . tree2treeH = height`. 
+
+To increase my confidence level, I've also implemented a quick check test for this assumption. Please see **Appendix** for full implementation.
+
+``` {.haskell .literate}
+prop_testHeight t = heightH (tree2treeH t) == height t
+```
+After execution, we had following result:
+
+Main> quickCheck prop_testHeight 
++++ OK, passed 100 tests.
+
+### Q16 - Define `mktreeH`
+
+I've found three possible approach to achieve this function.
+
+#### Approach 1 - 1st level tree only
+Instead of traversing all trees nodes, we only transform the first layer of the trees. 
+
 ``` {.haskell .literate}
 mktreeH :: State -> TreeH
 mktreeH s = minHeightH ( map ( \t -> nodeH t [ tree2treeH (mktree s') | s' <- (outcomes s t)]) (tests s))
 ```
+#### Approach 2 - traverse all node during generation
+This approach will calculate the height of all tree nodes during generation. 
 
 ``` {.haskell .literate}
 mktreeH' :: State -> TreeH
@@ -369,11 +403,33 @@ mktreeH' s
    | final s || length (tests s) == 0  = StopH s
    | otherwise  = minHeightH ( map ( \t -> nodeH t [ mktreeH' s' | s' <- (outcomes s t)]) (tests s))
 ```
+#### Approach 3 - convert the final result of mktree
+This approach is very straight forward, it just convert whatever output from `mktree` function.
 
 ``` {.haskell .literate}
 mktreeH'' :: State -> TreeH
 mktreeH'' = tree2treeH . mktree
 ```
+
+#### Peformance Indication
+
+Following table summarized our experiment of each approach. 
+
+Test case: `Pair 8 0`
+
+| Function | Performance | Analysis |
+|----------|-------------|---------|
+| mktreeH | almost identical to `mktree`, with less than 0.1 second difference | According to our experiement in **Appendix 2**, the performance of `height` and `heightH` is unnoticeable when given tree or data set is small. |
+| mktreeH' | a lot slower than `mktree` | We have to calculate the height for more node than first approach and `mktree` | 
+| mktreeH'' | always slightly slower than `mktree` | obviously, it won't improve the performance because `mktree` is still going to be executed. Also according to **Appendix 2** the time lapse of transform a small tree (3 in height) is almost unnoticeable |
+
+As a result, we will present `mktreeH` as our final implementation. 
+
+## A greedy solution
+
+According to our experiment, our previous attempt didn't optimize the performance as we would hope it would be. In this section, we are going to try a greedy solution which filter the test cases at local bases. 
+
+Firstly, we will copy the `optimal` method from assignment sheet. 
 
 ``` {.haskell .literate}
 optimal::State -> Test -> Bool
@@ -391,14 +447,18 @@ optimal (Triple l h g) (TTrip (a, b, c) (d, e,f ))
            t = ceiling (logBase 3 (fromIntegral( l + h )))
 ```
 
-17
+### Q17 - Define `bestTests`
+
+Following method will filter the tests by checking if the test case is optimal. 
 
 ``` {.haskell .literate}
 bestTests::State -> [Test]
 bestTests s = filter (\t -> optimal s t) (tests s)
 ```
 
-18
+### Q18 - Define `mktreeG`
+
+The following function will return a tree with the optimal tests. The algorithm is very similar to `mktree`. We didn't try other approach like what we've done for Q16. The reason for that is in this scenario, we want all node to be optimized.    
 
 ``` {.haskell .literate}
 mktreeG::State -> TreeH
@@ -407,16 +467,19 @@ mktreeG s
    | otherwise  = minHeightH ( map ( \t -> nodeH t [ mktreeG s' | s' <- (outcomes s t)]) (bestTests s))
 ```
 
-19
+### Q19 - Define `mktreesG`
+
+This function will return a list of trees. 
 
 ``` {.haskell .literate}
 mktreesG::State -> [TreeH]
 mktreesG s = map (\t -> nodeH t [mktreeG  s' | s' <- (outcomes s t)]) (bestTests s)
 ```
+There is only 1 tree in the list for `Pair 12 0`. The reason behind this is because there is only 1 test for `bestTests (Pair 12 0)`. 
 
 <div style="page-break-after: always;"></div>
 
-# Appendix - Unit Test
+# Appendix 1 - Unit Test
 
 In order to justify the assumption in question 15, I implemented quick
 check tests to validate our theory. Although this can not proof the
@@ -497,3 +560,45 @@ After execution, we had following result:
 
 Main> quickCheck prop_testHeight 
 +++ OK, passed 100 tests.
+
+<div style="page-break-after: always;"></div>
+
+# Appendix 2 - Comparing `height` and `heightH`
+
+In order to test the performance difference between `heighH` and `height`. We designed following test cases:
+
+Define `a` as a `Tree` with height 3.
+
+``` {.haskell .literate}
+a = Node (TPair (2,0) (2,0)) [Node (TTrip (0,0,1) (0,1,0)) [Stop (Triple 0 1 7),Node (TTrip (1,0,0) (1,0,0)) [Stop (Triple 1 0 7),Stop (Triple 0 1 7),Stop (Triple 1 0 7)],Stop (Triple 0 0 8)],Node (TPair (0,2) (2,0)) [Node (TTrip (0,0,1) (0,1,0)) [Stop (Triple 0 1 3),Stop (Triple 0 1 3),Stop (Triple 0 0 4)],Node (TPair (1,0) (1,0)) [Stop (Triple 1 1 0),Stop (Pair 0 8),Stop (Triple 1 1 0)],Node (TTrip (0,0,1) (1,0,0)) [Stop (Triple 0 0 4),Stop (Triple 1 0 3),Stop (Triple 1 0 3)]],Node (TTrip (0,0,1) (0,1,0)) [Stop (Triple 0 1 7),Node (TTrip (1,0,0) (1,0,0)) [Stop (Triple 1 0 7),Stop (Triple 0 1 7),Stop (Triple 1 0 7)],Stop (Triple 0 0 8)]]
+```
+
+Define `b` as a `TreeH` with height 3.
+
+``` {.haskell .literate}
+b = NodeH 3 (TPair (2,0) (2,0)) [NodeH 2 (TTrip (0,0,1) (0,1,0)) [StopH (Triple 0 1 7),NodeH 1 (TTrip (1,0,0) (1,0,0)) [StopH (Triple 1 0 7),StopH (Triple 0 1 7),StopH (Triple 1 0 7)],StopH (Triple 0 0 8)],NodeH 2 (TPair (0,2) (2,0)) [NodeH 1 (TTrip (0,0,1) (0,1,0)) [StopH (Triple 0 1 3),StopH (Triple 0 1 3),StopH (Triple 0 0 4)],NodeH 1 (TPair (1,0) (1,0)) [StopH (Triple 1 1 0),StopH (Pair 0 8),StopH (Triple 1 1 0)],NodeH 1 (TTrip (0,0,1) (1,0,0)) [StopH (Triple 0 0 4),StopH (Triple 1 0 3),StopH (Triple 1 0 3)]],NodeH 2 (TTrip (0,0,1) (0,1,0)) [StopH (Triple 0 1 7),NodeH 1 (TTrip (1,0,0) (1,0,0)) [StopH (Triple 1 0 7),StopH (Triple 0 1 7),StopH (Triple 1 0 7)],StopH (Triple 0 0 8)]]
+```
+
+We also have `a == (treeH2tree b)`:
+
+For example:
+
+``` {.haskell .literate}
+*Main> a == (treeH2tree b)
+True
+```
+
+We've run the following tests:
+
+|Test Case | Time Usage | 
+|----------|--------|
+| height a | 0.00 sec |
+| heightH b | 0.00 sec |
+| minimum (map (\x -> a) [0..100]) | 0.04 sec |
+| minimum (map (\x -> b) [0..100]) | 0.04 sec |
+| minimum (map (\x -> a) [0..10000]) | 0.30 sec |
+| minimum (map (\x -> b) [0..10000]) | 0.05 sec |
+
+In conclusion, when given data set is small (either a smaller tree, or smaller dataset), the performance difference between `height` and `heightH` is unnoticable. However, the cached method works a lot better when there is more maps in the list as it doesn't need to traverse all the child nodes. Unfortunately, this is not the main bottle neck of `mktree (Pair 8 0)`. 
+
+
