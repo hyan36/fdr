@@ -178,17 +178,17 @@ Define a final method to determine
 > final::State -> Bool
 > final (Pair u g) = u == 0 && g > 0
 > final (Triple l h g)
->    | l == 1           = h == 0 && g > 0
->    | h == 1           = l == 0 && g > 0
->    | otherwise        = False
+>    | l == 1    = h == 0 && g > 0
+>    | h == 1    = l == 0 && g > 0
+>    | otherwise = False
 
 10. height
 
 > height::Tree -> Int
 > height (Stop x) = 0
 > height (Node t xs)
->   | length xs > 0 = 1 + maximum [ height x | x <- xs]
->   | otherwise     = 1
+>   | length xs > 0 = 1 + (maximum $ map height xs)
+>   | otherwise     = 0
 
 
 11. minHeight
@@ -196,7 +196,7 @@ Define a final method to determine
 > instance Ord Tree where
 >     compare x y = compare (height x) (height y)
 > minHeight::[Tree] -> Tree
-> minHeight xs = minimum xs
+> minHeight = minimum
 
 
 12. mktree
@@ -204,7 +204,7 @@ Define a final method to determine
 > mktree::State -> Tree
 > mktree s
 >     | final s || l == 0  = Stop s
->     | otherwise          = minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t) ]) ts)
+>     | otherwise          = minHeight (map (\t -> Node t [ mktree s' | s'<-(outcomes s t)]) ts)
 >     where
 >         l  = (length ts)
 >         ts = tests s
@@ -225,32 +225,31 @@ Define a final method to determine
 14
 
 > nodeH :: Test -> [TreeH] -> TreeH
-> nodeH t ts = NodeH (maximum (map heightH ts) + 1) t ts
+> nodeH t ts = NodeH (1 + maximum (map heightH ts)) t ts
 
 15
 
 > tree2treeH::Tree -> TreeH
 > tree2treeH (Stop s) = StopH s
-> tree2treeH (Node t ts) = NodeH (height (Node t ts)) t [ tree2treeH x | x <- ts]
+> tree2treeH (Node t ts) = nodeH t [ tree2treeH x | x <- ts]
 
 16
 
 > instance Ord TreeH where
 >     compare x y = compare (heightH x) (heightH y)
 > minHeightH:: [TreeH] -> TreeH
-> minHeightH xs = minimum xs
+> minHeightH = minimum
 
 > mktreeH :: State -> TreeH
-> mktreeH s
->    | final s || l == 0  = StopH s
->    | otherwise          = minHeightH (map ( \t -> mknode s t ) (tests s))
->    where
->        l              = length (tests s)
->        mknode s t     = NodeH height t trees
->            where 
->                trees  = [ tree2treeH (mktree s') | s' <- (outcomes s t)]
->                height = heightH (maximum trees) + 1
+> mktreeH s = minHeightH ( map ( \t -> nodeH t [ tree2treeH (mktree s') | s' <- (outcomes s t)]) (tests s))
 
+> mktreeH' :: State -> TreeH
+> mktreeH' s
+>    | final s || length (tests s) == 0  = StopH s
+>    | otherwise  = minHeightH ( map ( \t -> nodeH t [ mktreeH' s' | s' <- (outcomes s t)]) (tests s))
+
+> mktreeH'' :: State -> TreeH
+> mktreeH'' = tree2treeH . mktree
 
 > optimal::State -> Test -> Bool
 > optimal (Pair u g) (TPair (a,b) (ab, 0))
@@ -275,24 +274,15 @@ Define a final method to determine
 
 > mktreeG::State -> TreeH
 > mktreeG s
->    | final s || l == 0  = StopH s
->    | otherwise          = head (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
->    where l        = length  (bestTests s)
->          trees t  = [ mktreeG s' | s' <- (outcomes s t)]
->          height t = heightH (maximum (trees t)) + 1
+>    | final s || length (bestTests s) == 0 = StopH s
+>    | otherwise  = minHeightH ( map ( \t -> nodeH t [ mktreeG s' | s' <- (outcomes s t)]) (bestTests s))
 
 19
 
-> mktreeG'::State -> TreeH
-> mktreeG' s
->    | final s || l == 0  = StopH s
->    | otherwise          = minHeightH (map ( \t -> NodeH (height t) t (trees t )) (bestTests s))
->    where l        = length  (bestTests s)
->          trees t  = [ mktreeG' s' | s' <- (outcomes s t)]
->          height t = heightH (minHeightH (trees t)) + 1
-
 > mktreesG::State -> [TreeH]
-> mktreesG s = map ( \t -> mktreeG' s) (bestTests s)
+> mktreesG s = map (\t -> nodeH t [mktreeG  s' | s' <- (outcomes s t)]) (bestTests s)
+
+           
 
 Appendix - Unit Test
 
