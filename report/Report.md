@@ -52,7 +52,7 @@ My solution is to take **n** coins from the genuine pile. (Given we have only on
 
 We will then define a function to prefill the original list. So we can split the pile into smaller chunks e.g. [ [1,2,1],[1,1,1]...[1,1,1] ].
 
-The following method will take an `n` as an input which indicates the size of the chunks and list as original input. It will return a new list which will always be `mod` by n.
+The following method will take an `n` as an input which indicates the size of the chunks and list as original input. It will return a new list which will always be able to `mod` by n without remaining.
 
 ``` {.haskell .literate}
 prefill::Int -> [Int] -> [Int]
